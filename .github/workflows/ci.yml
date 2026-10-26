@@ -19,7 +19,7 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
 
-      - name: Build (Universal: x86_64 + arm64)
+      - name: Build Universal x86_64 + arm64
         run: |
           xcodebuild -project MacClean.xcodeproj \
             -scheme MacClean \
