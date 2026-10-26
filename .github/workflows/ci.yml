@@ -30,7 +30,7 @@ jobs:
       - name: Verify universal binary
         run: |
           # Find the built app bundle (Debug build on macOS)
-          APP_PATH=$(find build/Build/Products/Debug-iphoneos/ -name MacClean.app | head -n 1)
+          APP_PATH=$(find build/Build/Products/Debug-macosx -name MacClean.app | head -n 1)
           if [ -z "$APP_PATH" ]; then
             echo "❌ Built app bundle not found"
             exit 1
