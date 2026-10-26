@@ -1,0 +1,15 @@
+# Xcode / Swift
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+xcuserdata/
+DerivedData/
+.build/
+*.xcuserstate
+
+# macOS
+.DS_Store
+
+# Signing (M7)
+*.p12
+*.mobileprovision
+build/

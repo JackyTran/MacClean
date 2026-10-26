@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    name: Universal build + tests (arm64 & x86_64)
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (Universal: x86_64 + arm64)
+        run: |
+          xcodebuild -project MacClean.xcodeproj \
+            -scheme MacClean \
+            -configuration Debug \
+            -destination 'platform=macOS' \
+            build | xcpretty
+
+      - name: Verify universal binary (SRS NFR-1 / TASKS T1.2)
+        run: |
+          APP="$(xcodebuild -project MacClean.xcodeproj -scheme MacClean \
+            -showBuildSettings 2>/dev/null | awk '/ BUILT_PRODUCTS_PATH/{print $3; exit}')/MacClean.app/Contents/MacOS/MacClean"
+          lipo -info "$APP"
+          lipo -info "$APP" | grep -q x86_64 || { echo "ERROR: x86_64 slice missing"; exit 1; }
+          lipo -info "$APP" | grep -q arm64 || { echo "ERROR: arm64 slice missing"; exit 1; }
+          echo "Universal binary verified: both architectures present."
+
+      # Native slice: arm64 on the Apple Silicon runner
+      - name: Unit tests — native arm64
+        run: |
+          xcodebuild -project MacClean.xcodeproj \
+            -scheme MacClean \
+            -destination 'platform=macOS' \
+            test | xcpretty
+
+      # Intel slice: run the same suite under Rosetta (TASKS T1.6 — Intel test gate)
+      - name: Unit tests — Intel x86_64 via Rosetta
+        run: |
+          arch -x86_64 xcodebuild -project MacClean.xcodeproj \
+            -scheme MacClean \
+            -destination 'platform=macOS' \
+            -derivedDataPath build-x86 \
+            ONLY_ACTIVE_ARCH=NO \
+            test | xcpretty

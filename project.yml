@@ -1,0 +1,148 @@
+name: MacClean
+options:
+  bundleIdPrefix: com.macclean
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    # Universal binary: both Intel and Apple Silicon (SRS NFR-1, TASKS T1.2)
+    ARCHS: [x86_64, arm64]
+    ONLY_ACTIVE_ARCH: NO
+    # Hardened Runtime enables library validation, which rejects the
+    # ad-hoc-signed embedded MacCleanCore.framework (ad-hoc signatures carry
+    # no shared Team ID). The app waives library validation via
+    # Resources/MacClean.entitlements; drop that entitlement in M7 (T7.1),
+    # once app and framework are signed with the same Developer ID.
+    ENABLE_HARDENED_RUNTIME: YES
+
+targets:
+  MacCleanApp:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/MacCleanApp
+      # App icon. Regenerate with: swift scripts/make-icon.swift --iconset \
+      #   Resources/Assets.xcassets/AppIcon.appiconset
+      - path: Resources/Assets.xcassets
+    dependencies:
+      - target: MacCleanCore
+      # Build-order dependency only; the copy into Contents/Library/LaunchDaemons
+      # happens in the embed-helper script below (SMAppService layout, T5.1).
+      - target: MacCleanHelper
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.macclean.app
+        PRODUCT_NAME: MacClean
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.utilities
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # Set explicitly on this target, not only at the project level: the
+        # Hardened Runtime turns on library validation, which rejects the
+        # ad-hoc-signed embedded MacCleanCore.framework (ad-hoc signatures
+        # have no shared Team ID) and kills the app at dyld time with
+        # "Library not loaded: @rpath/MacCleanCore.framework". The app waives
+        # library validation via this entitlement until M7 (T7.1) signs the
+        # app and the framework with the same Developer ID identity.
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: Resources/MacClean.entitlements
+        # Placeholder signing for local dev; Developer ID arrives in M7 (T7.1)
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        GENERATE_INFOPLIST_FILE: YES
+    preBuildScripts:
+      - name: Embed Privileged Helper
+        script: |
+          set -e
+          DEST="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Library/LaunchDaemons"
+          mkdir -p "$DEST"
+          cp "${BUILT_PRODUCTS_DIR}/com.macclean.helper" "$DEST/com.macclean.helper"
+          cp "${SRCROOT}/Resources/Helper/com.macclean.helper.plist" "$DEST/com.macclean.helper.plist"
+          # Ad-hoc sign the embedded helper for local runs; real signing in M7.
+          codesign --force --sign - "$DEST/com.macclean.helper" || true
+
+  MacCleanCore:
+    type: framework
+    platform: macOS
+    sources:
+      - path: Sources/MacCleanCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.macclean.core
+        GENERATE_INFOPLIST_FILE: YES
+
+  MacCleanHelper:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Sources/MacCleanHelper
+    dependencies:
+      - target: MacCleanCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.macclean.helper
+        # SMAppService: the executable must be named like the plist label (T5.1)
+        PRODUCT_NAME: com.macclean.helper
+        GENERATE_INFOPLIST_FILE: NO
+        LD_RUNPATH_SEARCH_PATHS:
+          - "@executable_path"
+          - "@executable_path/../../Frameworks"
+
+  # CLI XPC client used only by the M5 integration test (T5.5)
+  HelperTestClient:
+    type: tool
+    platform: macOS
+    sources:
+      - path: Sources/HelperTestClient
+    dependencies:
+      - target: MacCleanCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.macclean.helpertestclient
+        GENERATE_INFOPLIST_FILE: NO
+        LD_RUNPATH_SEARCH_PATHS:
+          - "@executable_path"
+
+  MacCleanCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/MacCleanCoreTests
+    dependencies:
+      - target: MacCleanCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.macclean.coretests
+        GENERATE_INFOPLIST_FILE: YES
+
+  # XCUITest smoke test: list → select → scan → confirm (SRS NFR-16, TASKS T6.6)
+  MacCleanUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - path: Tests/MacCleanUITests
+    dependencies:
+      - target: MacCleanApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.macclean.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: MacCleanApp
+        # The global Hardened Runtime (NFR-6) turns on library validation,
+        # which rejects ad-hoc-signed test bundles ("different Team IDs").
+        ENABLE_HARDENED_RUNTIME: NO
+
+schemes:
+  MacClean:
+    build:
+      targets:
+        MacCleanApp: all
+        MacCleanHelper: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - MacCleanCoreTests
+        - MacCleanUITests

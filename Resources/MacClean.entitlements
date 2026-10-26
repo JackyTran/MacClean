@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The Hardened Runtime turns on library validation, which requires every
+	     loaded library to be signed by the same Team ID as the main executable.
+	     Until the app and the embedded MacCleanCore.framework share a Developer
+	     ID identity (M7 / T7.1) both are ad-hoc signed, so they have no shared
+	     Team ID and dyld refuses to load the framework:
+	     "Library not loaded: @rpath/MacCleanCore.framework/Versions/A/MacCleanCore"
+	     ... "mapping process and mapped file (non-platform) have different Team IDs".
+	     That aborts the app at launch, before any Swift code runs.
+
+	     Waiving library validation keeps the rest of the Hardened Runtime in
+	     place. Delete this file and the CODE_SIGN_ENTITLEMENTS setting once
+	     Developer ID signing is in place — library validation then passes on
+	     its own. -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+</dict>
+</plist>

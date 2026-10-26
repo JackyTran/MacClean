@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- SMAppService requires: Label == plist filename, executable named like Label,
+         no Program keys (the system fills the path). MachServices enables the XPC listener. -->
+    <key>Label</key>
+    <string>com.macclean.helper</string>
+    <key>MachServices</key>
+    <dict>
+        <key>com.macclean.helper</key>
+        <true/>
+    </dict>
+    <key>AssociatedBundleIdentifiers</key>
+    <array>
+        <string>com.macclean.app</string>
+    </array>
+</dict>
+</plist>
