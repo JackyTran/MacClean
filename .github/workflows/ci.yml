@@ -27,14 +27,19 @@ jobs:
             -destination 'platform=macOS' \
             build | xcpretty
 
-      - name: Verify universal binary (SRS NFR-1 / TASKS T1.2)
+      - name: Verify universal binary
         run: |
-          APP="$(xcodebuild -project MacClean.xcodeproj -scheme MacClean \
-            -showBuildSettings 2>/dev/null | awk '/ BUILT_PRODUCTS_PATH/{print $3; exit}')/MacClean.app/Contents/MacOS/MacClean"
+          # Find the built app bundle (Debug build on macOS)
+          APP_PATH=$(find build/Build/Products/Debug-iphoneos/ -name MacClean.app | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ Built app bundle not found"
+            exit 1
+          fi
+          APP="$APP_PATH/Contents/MacOS/MacClean"
           lipo -info "$APP"
           lipo -info "$APP" | grep -q x86_64 || { echo "ERROR: x86_64 slice missing"; exit 1; }
           lipo -info "$APP" | grep -q arm64 || { echo "ERROR: arm64 slice missing"; exit 1; }
-          echo "Universal binary verified: both architectures present."
+          echo "✅ Universal binary verified: both architectures present."
 
       # Native slice: arm64 on the Apple Silicon runner
       - name: Unit tests — native arm64
