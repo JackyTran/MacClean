@@ -42,6 +42,11 @@ jobs:
           lipo -info "$APP" | grep -q arm64 || { echo "ERROR: arm64 slice missing"; exit 1; }
           echo "✅ Universal binary verified: both architectures present."
 
+      - name: Package .dmg
+        run: |
+          # Create a DMG from the built app
+          mkdir -p dist
+          hdiutil create -volname "MacClean" -srcfolder "$APP_PATH" -ov -format UDZO dist/MacClean.dmg
       # Native slice: arm64 on the Apple Silicon runner
       - name: Unit tests — native arm64
         run: |
