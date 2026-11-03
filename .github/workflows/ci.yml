@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main]
+    tags:
+      - 'v*'
   pull_request:
 
 jobs:
@@ -64,3 +66,43 @@ jobs:
             -derivedDataPath build-x86 \
             ONLY_ACTIVE_ARCH=NO \
             test | xcpretty
+
+  create-release:
+    name: Create Release Package
+    runs-on: macos-15
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build Release Universal
+        run: |
+          xcodebuild -project MacClean.xcodeproj \
+            -scheme MacClean \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -derivedDataPath build_release \
+            build | xcpretty
+
+      - name: Package .dmg
+        run: |
+          APP_PATH=$(find ./build_release -type d -name "MacClean.app" | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ Release app bundle not found"
+            exit 1
+          fi
+          mkdir -p dist
+          hdiutil create -volname "MacClean" -srcfolder "$APP_PATH" -ov -format UDZO dist/MacClean.dmg
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/MacClean.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

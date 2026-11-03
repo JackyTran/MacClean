@@ -1,4 +1,5 @@
 # MacClean
+**Version: v1.0.0**
 
 [![CI](https://github.com/OWNER/MacClean/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/MacClean/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -64,6 +65,8 @@ Build & test from the command line:
 xcodebuild -project MacClean.xcodeproj -scheme MacClean -configuration Debug build
 xcodebuild -project MacClean.xcodeproj -scheme MacClean test
 ```
+
+Official releases are automatically packaged as `.dmg` files via GitHub Actions when a version tag (e.g., `v1.0.0`) is pushed.
 
 Every build produces a universal binary (x86_64 + arm64) — verify with:
 
